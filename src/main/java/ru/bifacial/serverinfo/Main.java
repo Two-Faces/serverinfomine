@@ -5,13 +5,14 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.event.Listener;
 
 import java.io.File;
-import java.net.HttpURLConnection;
+import java.io.IOException;
 import java.net.URL;
-import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
 
 public class Main extends JavaPlugin implements Listener {
     public void onEnable() {
@@ -24,27 +25,33 @@ public class Main extends JavaPlugin implements Listener {
 
     public void createConfig() {
         this.getConfig().options().header("Plugin by Bifacial");
-        if (!this.getConfig().isBoolean("requestIp")) {
-            this.getConfig().set("requestIp", false);
-        }
+        this.getConfig().set("ENTRY_URL", "https://expample.com/api/entry.php");
+        this.getConfig().set("LEAVE_URL", "https://expample.com/api/exit.php");
 
         this.saveConfig();
     }
 
-    @EventHandler(
-        priority = EventPriority.HIGH
-    )
-    public void RequestURI(PlayerJoinEvent e) throws Exception {
-        Player p = e.getPlayer();
+    @EventHandler(priority = EventPriority.HIGH)
+    public void onJoin(PlayerJoinEvent e) throws Exception {
+        HashMap<String, String> data = this.getData(e.getPlayer());
 
-        URL url = new URL(this.getConfig().getString("requestIp"));
+        new Request().send("POST", new URL(this.getConfig().getString("ENTRY_URL")), data);
+    }
 
-        String data = "ip=" + p.getAddress().getAddress().toString() + "&port=" + getServer().getPort() + "&uuid=" + p.getUniqueId();
+    @EventHandler(priority = EventPriority.HIGH)
+    public void onLeave(PlayerQuitEvent e) throws IOException {
+        HashMap<String, String> data = this.getData(e.getPlayer());
 
-        HttpURLConnection con = (HttpURLConnection) url.openConnection();
-        con.setRequestMethod("POST");
-        con.setDoOutput(true);
-        con.getOutputStream().write(data.getBytes(StandardCharsets.UTF_8));
-        con.getInputStream();
+        new Request().send("POST", new URL(this.getConfig().getString("LEAVE_URL")), data);
+    }
+
+    private HashMap<String, String> getData(Player p) {
+        HashMap<String,String> data = new HashMap<>();
+        data.put("ip", p.getAddress().getAddress().toString());
+        data.put("port", String.valueOf(getServer().getPort()));
+        data.put("uuid", p.getUniqueId().toString());
+        data.put("location", p.getWorld().getName() + "," + p.getLocation().getX() + "," + p.getLocation().getY() + "," + p.getLocation().getZ());
+
+        return data;
     }
 }
