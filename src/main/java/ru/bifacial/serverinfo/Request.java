@@ -28,7 +28,6 @@ public class Request {
             }
         });
 
-        System.out.println(string);
         return string.toString().getBytes(StandardCharsets.UTF_8);
     }
 }
